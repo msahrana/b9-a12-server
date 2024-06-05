@@ -29,6 +29,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     const usersCollection = client.db("lifeLineDB").collection("users");
+    const donationsCollection = client.db("lifeLineDB").collection("donations");
 
     /* Verify Token Middleware */
     const verifyToken = (req, res, next) => {
@@ -127,6 +128,13 @@ async function run() {
         $set: {user},
       };
       const result = await usersCollection.updateOne(query, updateDoc);
+      res.send(result);
+    });
+
+    /* donation api */
+    app.post("/donations", async (req, res) => {
+      const donation = req.body;
+      const result = await donationsCollection.insertOne(donation);
       res.send(result);
     });
 
