@@ -122,7 +122,6 @@ async function run() {
     app.put("/users/update/:email", async (req, res) => {
       const email = req.params.email;
       const user = req.body;
-      console.log(user);
       const query = {email};
       const updateDoc = {
         $set: {user},
@@ -148,6 +147,17 @@ async function run() {
       const id = req.params.id;
       const query = {_id: new ObjectId(id)};
       const result = await donationsCollection.findOne(query);
+      res.send(result);
+    });
+
+    app.put("/donation/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)};
+      const donation = req.body;
+      const updateDoc = {
+        $set: {...donation},
+      };
+      const result = await donationsCollection.updateOne(filter, updateDoc);
       res.send(result);
     });
 
