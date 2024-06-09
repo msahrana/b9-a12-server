@@ -30,6 +30,7 @@ async function run() {
   try {
     const usersCollection = client.db("lifeLineDB").collection("users");
     const donationsCollection = client.db("lifeLineDB").collection("donations");
+    const blogsCollection = client.db("lifeLineDB").collection("blogs");
 
     /* Verify Token Middleware */
     const verifyToken = (req, res, next) => {
@@ -130,6 +131,8 @@ async function run() {
       res.send(result);
     });
 
+    /* user-state api */
+
     /* donation api */
     app.post("/donations", async (req, res) => {
       const donation = req.body;
@@ -137,9 +140,8 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/donations/:email", async (req, res) => {
-      const email = req.params.email;
-      const result = await donationsCollection.find({email}).toArray();
+    app.get("/donations", async (req, res) => {
+      const result = await donationsCollection.find().toArray();
       res.send(result);
     });
 
@@ -158,6 +160,18 @@ async function run() {
         $set: {...donation},
       };
       const result = await donationsCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    /* blog api */
+    app.post("/blogs", async (req, res) => {
+      const blog = req.body;
+      const result = await blogsCollection.insertOne(blog);
+      res.send(result);
+    });
+
+    app.get("/blogs", async (req, res) => {
+      const result = await blogsCollection.find().toArray();
       res.send(result);
     });
 
