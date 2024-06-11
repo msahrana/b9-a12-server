@@ -132,6 +132,11 @@ async function run() {
     });
 
     /* user-state api */
+    app.get("/admin-stat", async (req, res) => {
+      const totalDonation = await donationsCollection.countDocuments();
+      const totalUsers = await usersCollection.countDocuments();
+      res.send({totalDonation, totalUsers});
+    });
 
     /* donation api */
     app.post("/donations", async (req, res) => {
