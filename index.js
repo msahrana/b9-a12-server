@@ -138,6 +138,12 @@ async function run() {
       res.send({totalDonation, totalUsers});
     });
 
+    app.get("/volunteer-stat", async (req, res) => {
+      const totalDonation = await donationsCollection.countDocuments();
+      const totalUsers = await usersCollection.countDocuments();
+      res.send({totalDonation, totalUsers});
+    });
+
     /* donation api */
     app.post("/donations", async (req, res) => {
       const donation = req.body;
