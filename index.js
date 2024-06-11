@@ -163,6 +163,13 @@ async function run() {
       res.send(result);
     });
 
+    app.delete("/donation/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)};
+      const result = await donationsCollection.deleteOne(query);
+      res.send(result);
+    });
+
     /* blog api */
     app.post("/blogs", async (req, res) => {
       const blog = req.body;
