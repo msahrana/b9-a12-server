@@ -1,8 +1,9 @@
 const express = require("express");
 const cors = require("cors");
-const jwt = require("jsonwebtoken");
-const cookieParser = require("cookie-parser");
 require("dotenv").config();
+const jwt = require("jsonwebtoken");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+const cookieParser = require("cookie-parser");
 const {MongoClient, ServerApiVersion, ObjectId} = require("mongodb");
 const app = express();
 const port = process.env.PORT || 5000;
@@ -31,6 +32,7 @@ async function run() {
     const usersCollection = client.db("lifeLineDB").collection("users");
     const donationsCollection = client.db("lifeLineDB").collection("donations");
     const blogsCollection = client.db("lifeLineDB").collection("blogs");
+    const paymentsCollection = client.db("lifeLineDB").collection("payments");
 
     /* Verify Token Middleware */
     const verifyToken = (req, res, next) => {
@@ -190,6 +192,27 @@ async function run() {
 
     app.get("/blogs", async (req, res) => {
       const result = await blogsCollection.find().toArray();
+      res.send(result);
+    });
+
+    /* payment api */
+    app.post("/create-payment-intent", async (req, res) => {
+      const {price} = req.body;
+      const priceInCent = parseFloat(price * 100);
+      if (!price || priceInCent > 1) return;
+      const {client_secret} = await stripe.paymentIntents.create({
+        amount: priceInCent,
+        currency: "usd",
+        automatic_payment_methods: {
+          enabled: true,
+        },
+      });
+      res.send({clientSecret: client_secret});
+    });
+
+    app.post("/payments", async (req, res) => {
+      const payment = req.body;
+      const result = await paymentsCollection.insertOne(payment);
       res.send(result);
     });
 
