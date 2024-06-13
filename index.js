@@ -9,7 +9,12 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 const corsOptions = {
-  origin: ["http://localhost:5173", "http://localhost:5174"],
+  origin: [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "https://life-line-fa28d.web.app",
+    "https://life-line-fa28d.firebaseapp.com",
+  ],
   credentials: true,
   optionSuccessStatus: 200,
 };
@@ -53,8 +58,8 @@ async function run() {
     const verifyAdmin = async (req, res, next) => {
       const email = req.decoded.email;
       const query = {email: email};
-      const user = await usersCollection.findOne(query);
-      const isAdmin = user?.role === "admin";
+      const result = await usersCollection.findOne(query);
+      const isAdmin = result?.user?.role === "admin";
       if (!isAdmin) {
         return res.status(403).send({message: "forbidden access"});
       }
@@ -111,7 +116,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/users", async (req, res) => {
+    app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
       const result = await usersCollection.find().toArray();
       res.send(result);
     });
@@ -130,6 +135,18 @@ async function run() {
         $set: {user},
       };
       const result = await usersCollection.updateOne(query, updateDoc);
+      res.send(result);
+    });
+
+    app.patch("/user/status/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)};
+      const updateDoc = {
+        $set: {
+          "user.status": "blocked",
+        },
+      };
+      const result = await usersCollection.updateOne(filter, updateDoc);
       res.send(result);
     });
 
@@ -195,11 +212,49 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/blogs/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)};
+      const result = await blogsCollection.findOne(query);
+      res.send(result);
+    });
+
+    app.patch("/blog/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)};
+      const updateDoc = {
+        $set: {
+          status: "published",
+        },
+      };
+      const result = await blogsCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    app.put("/blogs/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)};
+      const blog = req.body;
+      const updateDoc = {
+        $set: {...blog},
+      };
+      const result = await blogsCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    app.delete("/blog/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)};
+      const result = await blogsCollection.deleteOne(query);
+      res.send(result);
+    });
+
     /* payment api */
     app.post("/create-payment-intent", async (req, res) => {
       const {price} = req.body;
+      console.log({price});
       const priceInCent = parseFloat(price * 100);
-      if (!price || priceInCent > 1) return;
+      if (!price || priceInCent < 1) return;
       const {client_secret} = await stripe.paymentIntents.create({
         amount: priceInCent,
         currency: "usd",
