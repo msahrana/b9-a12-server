@@ -66,6 +66,28 @@ async function run() {
       next();
     };
 
+    const verifyVolunteer = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = {email: email};
+      const result = await usersCollection.findOne(query);
+      const isAdmin = result?.user?.role === "volunteer";
+      if (!isAdmin) {
+        return res.status(403).send({message: "forbidden access"});
+      }
+      next();
+    };
+
+    const verifyDonor = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = {email: email};
+      const result = await usersCollection.findOne(query);
+      const isAdmin = result?.user?.role === "donor";
+      if (!isAdmin) {
+        return res.status(403).send({message: "forbidden access"});
+      }
+      next();
+    };
+
     /* jwt api */
     app.post("/jwt", async (req, res) => {
       const user = req.body;
@@ -138,6 +160,17 @@ async function run() {
       res.send(result);
     });
 
+    app.put("/users/status/:email", async (req, res) => {
+      const email = req.params.email;
+      const user = req.body;
+      const query = {email};
+      const updateDoc = {
+        $set: {user},
+      };
+      const result = await usersCollection.updateOne(query, updateDoc);
+      res.send(result);
+    });
+
     app.patch("/user/status/:id", async (req, res) => {
       const id = req.params.id;
       const filter = {_id: new ObjectId(id)};
@@ -151,17 +184,24 @@ async function run() {
     });
 
     /* user-state api */
-    app.get("/admin-stat", async (req, res) => {
+    app.get("/admin-stat", verifyToken, verifyAdmin, async (req, res) => {
       const totalDonation = await donationsCollection.countDocuments();
       const totalUsers = await usersCollection.countDocuments();
-      res.send({totalDonation, totalUsers});
+      const totalPayments = await paymentsCollection.countDocuments();
+      res.send({totalDonation, totalUsers, totalPayments});
     });
 
-    app.get("/volunteer-stat", async (req, res) => {
-      const totalDonation = await donationsCollection.countDocuments();
-      const totalUsers = await usersCollection.countDocuments();
-      res.send({totalDonation, totalUsers});
-    });
+    app.get(
+      "/volunteer-stat",
+      verifyToken,
+      verifyVolunteer,
+      async (req, res) => {
+        const totalDonation = await donationsCollection.countDocuments();
+        const totalUsers = await usersCollection.countDocuments();
+        const totalPayments = await paymentsCollection.countDocuments();
+        res.send({totalDonation, totalUsers, totalPayments});
+      }
+    );
 
     /* donation api */
     app.post("/donations", async (req, res) => {
@@ -188,6 +228,29 @@ async function run() {
       const donation = req.body;
       const updateDoc = {
         $set: {...donation},
+      };
+      const result = await donationsCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    app.patch("/our-donation/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)};
+      const donation = req.body;
+      const updateDoc = {
+        $set: {...donation},
+      };
+      const result = await donationsCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    app.patch("/donation/status/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)};
+      const updateDoc = {
+        $set: {
+          status: "inprogress",
+        },
       };
       const result = await donationsCollection.updateOne(filter, updateDoc);
       res.send(result);
@@ -249,7 +312,48 @@ async function run() {
       res.send(result);
     });
 
-    /* payment api */
+    /* pagination and filtering api */
+    app.get("/all-donations", async (req, res) => {
+      const size = parseInt(req.query.size);
+      const page = parseInt(req.query.page) - 1;
+      const filter = req.query.filter;
+      let query = {};
+      if (filter) query = {status: filter};
+      const result = await donationsCollection
+        .find(query)
+        .skip(page * size)
+        .limit(size)
+        .toArray();
+      res.send(result);
+    });
+
+    app.get("/donations-count", async (req, res) => {
+      const count = await donationsCollection.countDocuments();
+      res.send({count});
+    });
+
+    app.get("/all-blogs", async (req, res) => {
+      const size = parseInt(req.query.size);
+      const page = parseInt(req.query.page) - 1;
+      const filter = req.query.filter;
+      let query = {};
+      if (filter) query = {status: filter};
+      const result = await blogsCollection
+        .find(query)
+        .skip(page * size)
+        .limit(size)
+        .toArray();
+      res.send(result);
+    });
+
+    app.get("/blogs-count", async (req, res) => {
+      const count = await blogsCollection.countDocuments();
+      res.send({count});
+    });
+
+    /* search */
+
+    /* payment api and pagination */
     app.post("/create-payment-intent", async (req, res) => {
       const {price} = req.body;
       console.log({price});
@@ -269,6 +373,22 @@ async function run() {
       const payment = req.body;
       const result = await paymentsCollection.insertOne(payment);
       res.send(result);
+    });
+
+    app.get("/payments", async (req, res) => {
+      const size = parseInt(req.query.size);
+      const page = parseInt(req.query.page) - 1;
+      const result = await paymentsCollection
+        .find()
+        .skip(page * size)
+        .limit(size)
+        .toArray();
+      res.send(result);
+    });
+
+    app.get("/payment-count", async (req, res) => {
+      const count = await paymentsCollection.countDocuments();
+      res.send({count});
     });
 
     // Send a ping to confirm a successful connection
