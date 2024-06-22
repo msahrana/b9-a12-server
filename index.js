@@ -215,6 +215,12 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/donations/:email", async (req, res) => {
+      const email = req.params.email;
+      const result = await donationsCollection.find({email}).toArray();
+      res.send(result);
+    });
+
     app.get("/donation/:id", async (req, res) => {
       const id = req.params.id;
       const query = {_id: new ObjectId(id)};
@@ -351,7 +357,24 @@ async function run() {
       res.send({count});
     });
 
-    /* search */
+    app.get("/all-users", async (req, res) => {
+      const size = parseInt(req.query.size);
+      const page = parseInt(req.query.page) - 1;
+      const filter = req.query.filter;
+      let query = {};
+      if (filter) query = {status: filter};
+      const result = await usersCollection
+        .find(query)
+        .skip(page * size)
+        .limit(size)
+        .toArray();
+      res.send(result);
+    });
+
+    app.get("/users-count", async (req, res) => {
+      const count = await usersCollection.countDocuments();
+      res.send({count});
+    });
 
     /* payment api and pagination */
     app.post("/create-payment-intent", async (req, res) => {
