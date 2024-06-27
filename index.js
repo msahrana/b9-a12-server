@@ -376,6 +376,8 @@ async function run() {
       res.send({count});
     });
 
+    /* search api */
+
     /* payment api and pagination */
     app.post("/create-payment-intent", async (req, res) => {
       const {price} = req.body;
